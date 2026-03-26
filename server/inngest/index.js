@@ -95,7 +95,7 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
             })
         })
 
-        const in24Hours = new Date(Date.new() + 24 * 60 * 60 * 1000)
+        const in24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000)
         await step.sleepUntil("wait-for-24-hours", in24Hours)
         await step.run('send-connection-request-reminder', async () => {
             const connection = await Connection.findById(connectionId).populate('from_user_id to_user_id');
@@ -144,9 +144,10 @@ const deleteStory = inngest.createFunction(
 
 const sendNotificationOfUnseenMessages = inngest.createFunction(
     {
-        id:"send-unseen-messages-notification",
-        triggers: [{cron: "TR=America/New_York 0 9 * * *"}]
-    },
+    id: "send-unseen-messages-notification",
+    cron: "0 9 * * *",
+    tz: "America/New_York", 
+  },
     async ({step}) => {
         const messages = await Message.find({seen: false}).populate('to_user_id');
         const unseenCount = {}
@@ -156,7 +157,7 @@ const sendNotificationOfUnseenMessages = inngest.createFunction(
         })
 
         for (const userId in unseenCount) {
-            const user =await User.findById(userIdd);
+            const user =await User.findById(userId);
 
             const subject = `You have ${unseenCount[userId]} unseen messages`;
 
