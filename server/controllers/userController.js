@@ -1,4 +1,3 @@
-import { connect } from "http2";
 import imagekit from "../configs/imagekit.js"
 import Connection from "../models/connection.js";
 import User from "../models/user.js"
@@ -187,8 +186,8 @@ export const sendConnectionRequest = async (req, res) => {
         // check if users are already connected
         const connection = await Connection.findOne({
             $or: [
-                {rom_user_id: userId, to_user_id: id},
-                {rom_user_id: id, to_user_id: userId},
+                {from_user_id: userId, to_user_id: id},
+                {from_user_id: id, to_user_id: userId},
             ]
         })
 
@@ -202,7 +201,6 @@ export const sendConnectionRequest = async (req, res) => {
                 name: 'app/connection-request',
                 data: {connectionId: newConnection._id}
             })
-            
             return res.json({success: true, message: 'connaction request sent successfully'})
         }else if(connection && connection.status === 'accepted'){
              return res.json({success: false, message: 'You are already connected with this user'})
@@ -243,19 +241,23 @@ export const acceptConnectionRequest = async (req, res) => {
         const {userId} = req.auth()
         const {id} = req.body;
 
-        const connection = await Connection.findOne({from_user_id, to_user_id: userId})
+        const connection = await Connection.findOne({from_user_id: id, to_user_id: userId})
 
         if(!connection){
             return res.json({ success: false, message: 'Connection not found' });
         }
 
         const user = await User.findById(userId);
-        user.connections.push(id);
-        await user.save()
+        if (!user.connections.includes(id)) {
+            user.connections.push(id);
+            await user.save();
+        }
 
-        const touser = await User.findById(id);
-        touser.connections.push(userId);
-        await touser.save()
+        const toUser = await User.findById(id);
+        if (!toUser.connections.includes(userId)) {
+            toUser.connections.push(userId);
+            await toUser.save();
+        }
 
         connection.status = 'accepted';
         await connection.save()
@@ -272,7 +274,7 @@ export const acceptConnectionRequest = async (req, res) => {
 // Get user profiles
 export const getUserProfiles = async (req, res) => {
     try {
-        const {profileId} = req.body;
+        const {profileId} = req.params;
         const profile = await User.findById(profileId)
         if(!profile){
             return res.json({ success: false, message: "Profile not found"})
